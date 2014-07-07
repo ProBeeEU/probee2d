@@ -1,7 +1,21 @@
 (ns eu.probee.probee2d.core
   (:import (javax.swing JFrame)))
 
-(defn create-window
+(defprotocol window-actions
+  (show [this])
+  (change-size [this w h])
+  (get-graphics [this])
+  (dispose [this]))
+
+(defrecord Window
+    [window width height buffer-strategy]
+  window-actions
+  (show [this] (.show window))
+  (change-size [this w h] (.setSize window w h))
+  (get-graphics [this] (.getDrawGraphics buffer-strategy))
+  (dispose [this] (.dispose window)))
+
+(defn window
   [{:keys [title width height]}]
   (let [window (JFrame. title)]
     (doto window
@@ -9,10 +23,6 @@
       (.setSize width height)
       (.setResizable false)
       (.setLocationRelativeTo nil)
-      (.setVisible true))
-    {:window window :buffer-strategy (.createBufferStrategy window 2)
-     :height height :width width}))
-
-(defn change-window-size
-  [window {:keys [width height]}]
-  (.setSize (:window window) width height))
+      (.setVisible true)
+      (.createBufferStrategy 2))
+    (->Window window width height (.getBufferStrategy window))))
