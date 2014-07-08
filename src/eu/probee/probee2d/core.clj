@@ -24,6 +24,20 @@
   [c]
   (eval (symbol (str "Color/" c))))
 
+(defprotocol common-actions
+  (dispose [this]))
+
+(defprotocol renderer-actions
+  (clear [this c]))
+
+(defrecord Renderer
+    [graphics width height]
+  renderer-actions
+  (clear [this c] (doto graphics
+                    (.setColor (color c))
+                    (.fillRect 0 0 width height)))
+  common-actions
+  (dispose [this] (.dispose graphics)))
 
 (defprotocol window-actions
   (show [this])
