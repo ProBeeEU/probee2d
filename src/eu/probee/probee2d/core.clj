@@ -67,3 +67,22 @@
       (.setVisible true)
       (.createBufferStrategy 2))
     (->Window window width height (.getBufferStrategy window))))
+
+(defn- image->buffered-image [image]
+  (let [buffered-image (BufferedImage. (.getWidth image nil)
+                                       (.getHeight image nil)
+                                       BufferedImage/TYPE_INT_ARGB)]
+    (doto (.createGraphics buffered-image)
+      (.drawImage image 0 0 nil)
+      (.dispose))
+    buffered-image))
+
+(defn- make-transparent [image c]
+  (let [marker-rgb (bit-or (.getRGB (color c)) 0xFF000000)
+        f (proxy [RGBImageFilter] []
+            (filterRGB [x y rgb]
+              (if (= (bit-or rgb 0xFF000000) marker-rgb)
+                (bit-and 0x00FFFFFF rgb)
+                rgb)))]
+    (.createImage (Toolkit/getDefaultToolkit)
+                  (FilteredImageSource. (.getSource image) f))))
