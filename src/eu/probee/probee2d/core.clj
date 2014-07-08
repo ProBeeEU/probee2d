@@ -16,7 +16,7 @@
   (dispose [this] (.dispose window)))
 
 (defn window
-  [{:keys [title width height]}]
+  [title width height]
   (let [window (JFrame. title)]
     (doto window
       (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
