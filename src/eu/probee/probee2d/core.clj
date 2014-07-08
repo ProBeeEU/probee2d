@@ -108,3 +108,31 @@
       (->Sprite image (.getWidth image) (.getHeight image)))
     (catch IOException e
         (. e printstacktrace))))
+
+(defprotocol spritesheet-actions
+  (get [this x y]))
+
+(defrecord Spritesheet
+    [image width height sprite-width sprite-height]
+  spritesheet-actions
+  (get [this x y] (->Sprite (. image getSubimage
+                               (* x sprite-width)
+                               (* y sprite-height)
+                               sprite-width
+                               sprite-height)
+                            sprite-width
+                            sprite-height)))
+
+(defn spritesheet
+  ([filepath sprite-size]
+     (spritesheet filepath sprite-size sprite-size))
+  ([filepath sprite-width sprite-height]
+     (try
+       (let [image (ImageIO/read (File. filepath))]
+         (->Spritesheet image
+                        (.getWidth image)
+                        (.getHeight image)
+                        sprite-width
+                        sprite-height))
+       (catch IOException e
+         (. e printstacktrace)))))
