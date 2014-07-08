@@ -42,15 +42,18 @@
 (defprotocol window-actions
   (show [this])
   (change-size [this w h])
-  (get-graphics [this])
-  (dispose [this]))
+  (get-renderer [this])
+  (render [this]))
 
 (defrecord Window
     [window width height buffer-strategy]
   window-actions
   (show [this] (.show window))
   (change-size [this w h] (.setSize window w h))
-  (get-graphics [this] (.getDrawGraphics buffer-strategy))
+  (get-renderer [this] (->Renderer (.getDrawGraphics buffer-strategy)
+                                   width height))
+  (render [this] (.show buffer-strategy))
+  common-actions
   (dispose [this] (.dispose window)))
 
 (defn window
