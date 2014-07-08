@@ -86,3 +86,25 @@
                 rgb)))]
     (.createImage (Toolkit/getDefaultToolkit)
                   (FilteredImageSource. (.getSource image) f))))
+
+(defprotocol sprite-actions
+  (draw [this renderer x y]))
+
+(defrecord Sprite
+    [image width height]
+  sprite-actions
+  (draw [this renderer x y] (.drawImage (:graphics renderer) image x y nil)))
+
+(defn sprite
+  [filepath & [options]]
+  (try
+    (let [image (ImageIO/read (File. filepath))
+          transparent-color (:transparent-color options)
+          image (if transparent-color
+                  (image->buffered-image
+                   (make-transparent image transparent-color))
+                  image)]
+      (println transparent-color)
+      (->Sprite image (.getWidth image) (.getHeight image)))
+    (catch IOException e
+        (. e printstacktrace))))
