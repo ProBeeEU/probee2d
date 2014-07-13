@@ -111,20 +111,17 @@
 
 (defrecord Image
     [image width height]
-  sprite-actions
+  image-actions
+  (make-transparent [this c] (assoc this :image
+                                    (image->buffered-image (convert-to-transparent image c))))
+  image-actions
   (draw [this renderer x y] (.drawImage (:graphics renderer) image x y nil)))
 
-(defn sprite
+(defn image
   [filepath & [options]]
   (try
-    (let [image (ImageIO/read (File. filepath))
-          transparent-color (:transparent-color options)
-          image (if transparent-color
-                  (image->buffered-image
-                   (make-transparent image transparent-color))
-                  image)]
-      (println transparent-color)
-      (->Sprite image (.getWidth image) (.getHeight image)))
+    (let [image (load-image filepath options)]
+      (->Image image (.getWidth image) (.getHeight image)))
     (catch IOException e
         (. e printstacktrace))))
 
@@ -133,8 +130,11 @@
 
 (defrecord Spritesheet
     [image width height sprite-width sprite-height]
+  image-actions
+  (make-transparent [this c] (assoc this :image
+                                    (image->buffered-image (convert-to-transparent image c))))
   spritesheet-actions
-  (get [this x y] (->Sprite (. image getSubimage
+  (get [this x y] (->Image (. image getSubimage
                                (* x sprite-width)
                                (* y sprite-height)
                                sprite-width
@@ -143,11 +143,9 @@
                             sprite-height)))
 
 (defn spritesheet
-  ([filepath sprite-size]
-     (spritesheet filepath sprite-size sprite-size))
-  ([filepath sprite-width sprite-height]
+  ([filepath sprite-width sprite-height & [options]]
      (try
-       (let [image (ImageIO/read (File. filepath))]
+       (let [image (load-image filepath options)]
          (->Spritesheet image
                         (.getWidth image)
                         (.getHeight image)
