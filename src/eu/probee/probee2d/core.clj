@@ -1,30 +1,8 @@
 (ns eu.probee.probee2d.core
   (:import (javax.swing JFrame)
-           (java.awt Color Graphics Toolkit)
-           (java.awt.geom AffineTransform Point2D$Double)
-           (java.awt.image BufferedImage FilteredImageSource RGBImageFilter
-                           AffineTransformOp)
-           (java.io File IOException)
-           (javax.imageio ImageIO)))
-
-(defmulti color
-  (fn [c] (type c)))
-
-(defmethod color clojure.lang.APersistentMap
-  [{:keys [r g b]}]
-  (Color. r g b))
-
-(defmethod color clojure.lang.APersistentVector
-  [[r g b]]
-  (Color. r g b))
-
-(defmethod color clojure.lang.Keyword
-  [c]
-  (eval (symbol (str "Color/" (name c)))))
-
-(defmethod color java.lang.String
-  [c]
-  (eval (symbol (str "Color/" c))))
+           (java.awt Graphics Toolkit))
+  (:require [eu.probee.probee2d.image :as img]
+            [eu.probee.probee2d.util :refer [color]]))
 
 (defprotocol common-actions
   (dispose [this]))
