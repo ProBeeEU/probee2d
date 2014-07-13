@@ -55,25 +55,17 @@
     (->Window window width height (.getBufferStrategy window) true)))
 
 (defprotocol image-actions
-  (make-transparent [this c] "Make the given color transparent in the image")
-  (scale [this factor] "Scale the image with the given factor")
-  (rotate [this angle] "Rotate the image by the given angle")
-  (flip [this direction] "Flip the image by the given direction")
-  (transform [this & transformations] "Transform the image, by the given transformation")
   (draw [this renderer x y] "Draw the image at the given x, y coordinates"))
 
 (defrecord Image
     [image width height angle]
-  image-actions
-  (make-transparent [this c] (assoc this :image
-                                    (image->buffered-image (convert-to-transparent image c))))
   image-actions
   (draw [this renderer x y] (.drawImage (:graphics renderer) image x y nil)))
 
 (defn image
   [filepath & [options]]
   (try
-    (let [image (load-image filepath options)]
+    (let [image (img/load-image filepath options)]
       (->Image image (.getWidth image) (.getHeight image) 0))
     (catch IOException e
         (. e printstacktrace))))
@@ -83,18 +75,15 @@
 
 (defrecord Spritesheet
     [image width height sprite-width sprite-height]
-  image-actions
-  (make-transparent [this c] (assoc this :image
-                                    (image->buffered-image (convert-to-transparent image c))))
   spritesheet-actions
   (get [this x y] (->Image (. image getSubimage
-                               (* x sprite-width)
-                               (* y sprite-height)
-                               sprite-width
-                               sprite-height)
-                            sprite-width
-                            sprite-height
-                            0)))
+                              (* x sprite-width)
+                              (* y sprite-height)
+                              sprite-width
+                              sprite-height)
+                           sprite-width
+                           sprite-height
+                           0)))
 
 (defn spritesheet
   ([filepath sprite-width sprite-height & [options]]
