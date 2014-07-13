@@ -79,3 +79,16 @@
                          (.translate (if horizontal? (* width -1) 0)
                                      (if vertical? (* height -1) 0)))
                        AffineTransformOp/TYPE_BILINEAR) image nil))))
+
+(defn transform-image [image {:keys [transparent-color scale-factor
+                                     rotate-angle flip-direction] :as options}]
+  (reduce #(%2 %1) image
+          (keep #(or %)
+                (vector (when transparent-color
+                          #(make-transparent % transparent-color))
+                        (when flip-direction
+                          #(flip % flip-direction))
+                        (when rotate-angle
+                          #(rotate % rotate-angle))
+                        (when scale-factor
+                          #(scale % scale-factor))))))
