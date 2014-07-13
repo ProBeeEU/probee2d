@@ -93,10 +93,23 @@
     (.createImage (Toolkit/getDefaultToolkit)
                   (FilteredImageSource. (.getSource image) f))))
 
-(defprotocol sprite-actions
-  (draw [this renderer x y]))
+(defn- get-image-dimensions [image]
+  (hash-map :width (.getWidth image)
+            :height (.getHeight image)))
 
-(defrecord Sprite
+(defn- load-image [filepath & [options]]
+  (let [image (ImageIO/read (File. filepath))
+        transparent-color (:transparent-color options)]
+    (if transparent-color
+      (image->buffered-image
+       (convert-to-transparent image transparent-color))
+      image)))
+
+(defprotocol image-actions
+  (make-transparent [this c] "Make the given color transparent in the image")
+  (draw [this renderer x y] "Draw the image at the given x, y coordinates"))
+
+(defrecord Image
     [image width height]
   sprite-actions
   (draw [this renderer x y] (.drawImage (:graphics renderer) image x y nil)))
