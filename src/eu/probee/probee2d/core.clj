@@ -41,20 +41,26 @@
 
 (defprotocol window-actions
   (show [this])
+  (hide [this])
   (change-size [this w h])
   (get-renderer [this])
   (render [this]))
 
 (defrecord Window
-    [window width height buffer-strategy]
+    [window width height buffer-strategy visible]
   window-actions
-  (show [this] (.show window))
-  (change-size [this w h] (.setSize window w h))
+  (show [this] (do (.setVisible window true)
+                   (assoc this :visible true)))
+  (hide [this] (do (.setVisible window false)
+                   (assoc this :visible false)))
+  (change-size [this w h] (do (.setSize window w h)
+                              (assoc this :width w :height h)))
   (get-renderer [this] (->Renderer (.getDrawGraphics buffer-strategy)
                                    width height))
   (render [this] (.show buffer-strategy))
   common-actions
-  (dispose [this] (.dispose window)))
+  (dispose [this] (do (.dispose window)
+                      nil)))
 
 (defn window
   [title width height]
@@ -66,7 +72,7 @@
       (.setLocationRelativeTo nil)
       (.setVisible true)
       (.createBufferStrategy 2))
-    (->Window window width height (.getBufferStrategy window))))
+    (->Window window width height (.getBufferStrategy window) true)))
 
 (defn- image->buffered-image [image]
   (let [buffered-image (BufferedImage. (.getWidth image nil)
