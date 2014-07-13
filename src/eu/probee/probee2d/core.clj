@@ -83,7 +83,7 @@
       (.dispose))
     buffered-image))
 
-(defn- make-transparent [image c]
+(defn- convert-to-transparent [image c]
   (let [marker-rgb (bit-or (.getRGB (color c)) 0xFF000000)
         f (proxy [RGBImageFilter] []
             (filterRGB [x y rgb]
