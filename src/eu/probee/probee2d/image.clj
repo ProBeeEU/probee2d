@@ -32,13 +32,11 @@
   (hash-map :width (.getWidth image)
             :height (.getHeight image)))
 
-(defn load-image [filepath & [options]]
-  (let [image (ImageIO/read (File. filepath))
-        transparent-color (:transparent-color options)]
-    (if transparent-color
-      (image->buffered-image
-       (make-transparent image transparent-color))
-      image)))
+(defn load-image [filepath]
+  (try
+    (ImageIO/read (File. filepath))
+    (catch IOException e
+      (. e printstacktrace))))
 
 (defn scale [image factor]
   (let [new-image (.filter (AffineTransformOp. (doto (AffineTransform.)
