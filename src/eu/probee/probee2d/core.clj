@@ -64,11 +64,11 @@
 
 (defn image
   [filepath & [options]]
-  (try
-    (let [image (img/load-image filepath options)]
-      (->Image image (.getWidth image) (.getHeight image) 0))
-    (catch IOException e
-        (. e printstacktrace))))
+  (let [img (img/load-image filepath)
+        image (->Image img (.getWidth img) (.getHeight img) 0)]
+    (if options
+      (img/transform-image image options)
+      image)))
 
 (defprotocol spritesheet-actions
   (get [this x y]))
