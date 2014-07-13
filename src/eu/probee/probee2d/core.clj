@@ -109,18 +109,18 @@
 
 (defprotocol image-actions
   (make-transparent [this c] "Make the given color transparent in the image")
+  (scale [this factor] "Scale the image with the given factor")
+  (rotate [this angle] "Rotate the image by the given angle")
+  (flip [this direction] "Flip the image by the given direction")
+  (transform [this & transformations] "Transform the image, by the given transformation")
   (draw [this renderer x y] "Draw the image at the given x, y coordinates"))
 
 (defn scale [image factor]
-  (let [width (* (:width image) factor)
-        height (* (:height image) factor)
-        new-image (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)
-        transform (AffineTransform.)]
-    (.scale transform factor factor)
-    (assoc image
-      :width width
-      :height height
-      :image (.filter (AffineTransformOp. transform AffineTransformOp/TYPE_BILINEAR) (:image image) new-image))))
+  (let [new-image (.filter (AffineTransformOp. (doto (AffineTransform.)
+                                                 (.scale factor factor))
+                                               AffineTransformOp/TYPE_BILINEAR)
+                           (:image image) nil)]
+    (merge (assoc image :image new-image) (get-image-dimensions new-image))))
 
 (defn- find-translation
   "Helper function used, to ensure right translation of image when rotating"
@@ -130,36 +130,35 @@
                                      (Point2D$Double. 0 (:height image)) nil)) -1)
                (* (.getY (.transform transformation (Point2D$Double. 0 0) nil)) -1))))
 
-(defn rotate [image angle]
-  (let [new-angle (mod (+ (:angle image) angle) 360)
-        transform (AffineTransform.)]
-    (doto transform
-      (.rotate (Math/toRadians angle) (/ (:width image) 2.0) (/ (:height image) 2.0))
-      (.preConcatenate (find-translation transform image)))
-    (let [new-image (.filter (AffineTransformOp. transform
-                                                 AffineTransformOp/TYPE_BILINEAR)
-                             (:image image) nil)]
-      (assoc image
-        :image new-image
-        :angle new-angle
-        :width (.getWidth new-image)
-        :height (.getHeight new-image)))))
+(defn rotate [{:keys [angle width height image] :as img} angle-degrees]
+  "Rotate given image the given degrees by the clock"
+  (let [new-image (.filter (AffineTransformOp.
+                            (doto (AffineTransform.)
+                              (.rotate (Math/toRadians angle-degrees)
+                                       (/ width 2)
+                                       (/ height 2))
+                              (#(.preConcatenate % (find-translation % img))))
+                            AffineTransformOp/TYPE_BILINEAR)
+                           image nil)]
+    (merge (assoc img
+             :image new-image
+             :angle (mod (+ angle angle-degrees) 360))
+           (get-image-dimensions new-image))))
 
 (defn flip [{:keys [width height image] :as img} & directions]
   (let [horizontal? (some #{:horizontal} directions)
-        vertical? (some #{:vertical} directions)
-        new-image (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)
-        transform (AffineTransform/getScaleInstance
-                   (if horizontal? -1 1)
-                   (if vertical? -1 1))]
-    (.translate transform
-                (if horizontal? (* width -1) 0)
-                (if vertical? (* height -1) 0))
+        vertical? (some #{:vertical} directions)]
     (assoc img
-      :image (.filter (AffineTransformOp. transform AffineTransformOp/TYPE_BILINEAR) image new-image))))
+      :image (.filter (AffineTransformOp.
+                       (doto (AffineTransform/getScaleInstance
+                              (if horizontal? -1 1)
+                              (if vertical? -1 1))
+                         (.translate (if horizontal? (* width -1) 0)
+                                     (if vertical? (* height -1) 0)))
+                       AffineTransformOp/TYPE_BILINEAR) image nil))))
 
 (defrecord Image
-    [image width height]
+    [image width height angle]
   image-actions
   (make-transparent [this c] (assoc this :image
                                     (image->buffered-image (convert-to-transparent image c))))
@@ -170,7 +169,7 @@
   [filepath & [options]]
   (try
     (let [image (load-image filepath options)]
-      (->Image image (.getWidth image) (.getHeight image)))
+      (->Image image (.getWidth image) (.getHeight image) 0))
     (catch IOException e
         (. e printstacktrace))))
 
@@ -189,7 +188,8 @@
                                sprite-width
                                sprite-height)
                             sprite-width
-                            sprite-height)))
+                            sprite-height
+                            0)))
 
 (defn spritesheet
   ([filepath sprite-width sprite-height & [options]]
