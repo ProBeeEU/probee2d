@@ -86,13 +86,10 @@
                            0)))
 
 (defn spritesheet
-  ([filepath sprite-width sprite-height & [options]]
-     (try
-       (let [image (load-image filepath options)]
-         (->Spritesheet image
-                        (.getWidth image)
-                        (.getHeight image)
-                        sprite-width
-                        sprite-height))
-       (catch IOException e
-         (. e printstacktrace)))))
+  ([filepath sprite-width sprite-height]
+     (let [image (img/load-image filepath)]
+       (->Spritesheet image
+                      (.getWidth image)
+                      (.getHeight image)
+                      sprite-width
+                      sprite-height))))
