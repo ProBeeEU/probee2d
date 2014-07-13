@@ -1,7 +1,9 @@
 (ns eu.probee.probee2d.core
   (:import (javax.swing JFrame)
            (java.awt Color Graphics Toolkit)
-           (java.awt.image BufferedImage FilteredImageSource RGBImageFilter)
+           (java.awt.geom AffineTransform Point2D$Double)
+           (java.awt.image BufferedImage FilteredImageSource RGBImageFilter
+                           AffineTransformOp)
            (java.io File IOException)
            (javax.imageio ImageIO)))
 
@@ -108,6 +110,53 @@
 (defprotocol image-actions
   (make-transparent [this c] "Make the given color transparent in the image")
   (draw [this renderer x y] "Draw the image at the given x, y coordinates"))
+
+(defn scale [image factor]
+  (let [width (* (:width image) factor)
+        height (* (:height image) factor)
+        new-image (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)
+        transform (AffineTransform.)]
+    (.scale transform factor factor)
+    (assoc image
+      :width width
+      :height height
+      :image (.filter (AffineTransformOp. transform AffineTransformOp/TYPE_BILINEAR) (:image image) new-image))))
+
+(defn- find-translation
+  "Helper function used, to ensure right translation of image when rotating"
+  [transformation image]
+  (doto (AffineTransform.)
+    (.translate (* (.getX (.transform transformation
+                                     (Point2D$Double. 0 (:height image)) nil)) -1)
+               (* (.getY (.transform transformation (Point2D$Double. 0 0) nil)) -1))))
+
+(defn rotate [image angle]
+  (let [new-angle (mod (+ (:angle image) angle) 360)
+        transform (AffineTransform.)]
+    (doto transform
+      (.rotate (Math/toRadians angle) (/ (:width image) 2.0) (/ (:height image) 2.0))
+      (.preConcatenate (find-translation transform image)))
+    (let [new-image (.filter (AffineTransformOp. transform
+                                                 AffineTransformOp/TYPE_BILINEAR)
+                             (:image image) nil)]
+      (assoc image
+        :image new-image
+        :angle new-angle
+        :width (.getWidth new-image)
+        :height (.getHeight new-image)))))
+
+(defn flip [{:keys [width height image] :as img} & directions]
+  (let [horizontal? (some #{:horizontal} directions)
+        vertical? (some #{:vertical} directions)
+        new-image (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)
+        transform (AffineTransform/getScaleInstance
+                   (if horizontal? -1 1)
+                   (if vertical? -1 1))]
+    (.translate transform
+                (if horizontal? (* width -1) 0)
+                (if vertical? (* height -1) 0))
+    (assoc img
+      :image (.filter (AffineTransformOp. transform AffineTransformOp/TYPE_BILINEAR) image new-image))))
 
 (defrecord Image
     [image width height]
