@@ -23,9 +23,10 @@
               (if (= (bit-or rgb 0xFF000000) marker-rgb)
                 (bit-and 0x00FFFFFF rgb)
                 rgb)))]
-    (image->buffered-image
-     (.createImage (Toolkit/getDefaultToolkit)
-                   (FilteredImageSource. (.getSource image) f)))))
+    (assoc image
+      :image (image->buffered-image
+              (.createImage (Toolkit/getDefaultToolkit)
+                            (FilteredImageSource. (.getSource (:image image)) f))))))
 
 (defn- get-image-dimensions [image]
   (hash-map :width (.getWidth image)
