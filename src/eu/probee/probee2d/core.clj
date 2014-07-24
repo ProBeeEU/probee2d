@@ -93,3 +93,87 @@
                       (.getHeight image)
                       sprite-width
                       sprite-height))))
+
+(defprotocol game-loop-actions
+  (start [this])
+  (stop [this]))
+
+(defrecord GameLoop
+    [loop-fn]
+  game-loop-actions
+  (start [this] (when-not (:running this)
+                  (assoc this :running true :thread (future (loop-fn)))))
+  (stop [this] (when (:running this)
+                 (assoc this :running (-> this :thread future-cancel not) :thread nil))))
+
+(defn- create-update-loop
+  [update-fn max-frame-skip tick-period]
+  (fn [next-tick]
+    (loop [tick next-tick updates 0]
+      (if (and (> (System/nanoTime) tick)
+               (< updates max-frame-skip))
+        (do (update-fn)
+            (recur (+ tick tick-period) (inc updates)))
+        tick))))
+
+(defn- create-sleep-or-yield
+  [max-no-sleep]
+  (fn [sleep-time no-sleep]
+    (if (> sleep-time 0)
+      (Thread/sleep (/ sleep-time 1000000N))
+      (if (>= no-sleep max-no-sleep)
+        (Thread/yield)
+        (inc no-sleep)))))
+
+(defn- create-game-loop
+  [window update-fn render-fn {:keys [max-frame-skip tick-period max-no-sleep] :as settings}]
+  (let [update-loop (create-update-loop update-fn max-frame-skip tick-period)
+        sleep-or-yield (create-sleep-or-yield max-no-sleep)]
+    (fn [] (loop [tick (System/nanoTime) no-sleep 0]
+             (let [next-tick (update-loop tick)]
+               (render-fn (get-renderer window))
+               (let [new-no-sleep (or (sleep-or-yield (- next-tick (System/nanoTime)) no-sleep) 0)]
+                 (recur next-tick new-no-sleep)))))))
+
+(def game-loop-defaults {:running false
+                         :ups 100
+                         :max-no-sleep 8
+                         :max-frame-skip 2})
+
+(defn calculate-tick-period [ups]
+  (/ 1000000000 ups))
+
+(defn game-loop
+  [window update-fn render-fn & [options]]
+  (let [final-options (merge game-loop-defaults options)
+        setup (merge final-options {:tick-period (calculate-tick-period (:ups final-options))})]
+    (->GameLoop (create-game-loop window update-fn render-fn setup))))
+
+(defrecord GameStatistics
+    [interval-time interval-start-time last-time update-time render-time updates renders
+     ups fps avg-update-time avg-render-time]
+  (record-start-time [this time] (if (= interval-start-time 0)
+                                   (assoc this :interval-start-time time :last-time time)
+                                   (assoc this :last-time time)))
+  (record-update-time [this time] (assoc this :update-time (+ update-time (- time last-record-time))
+                                         :updates (inc updates)
+                                         :last-time time))
+  (record-render-time [this time] (assoc this :render-time (+ render-time (- time last-record-time))
+                                         :renders (inc renders)
+                                         :last-time time))
+  (store-stats [this] (let [elapsed-time (- last-time interval-start-time)]
+                        (if (< elapsed-time interval-time)
+                          this
+                          (assoc this :fps (* (/ renders elapsed-time) 1000000000N)
+                                 :ups (* (/ updates elapsed-time) 1000000000N)
+                                 :avg-render-time (/ (/ render-time 1000000N) renders)
+                                 :avg-update-time (/ (/ update-time 1000000N) updates)
+                                 :updates 0
+                                 :renders 0
+                                 :update-time 0
+                                 :render-time 0
+                                 :interval-start-time 0)))))
+                                        ]
+
+(def game-statistics []
+  (->GameStatistics 200000000N 0 0 0 0 0 0 0 0 0 0))
