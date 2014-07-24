@@ -55,35 +55,39 @@
     (->Window window width height (.getBufferStrategy window) true)))
 
 (defprotocol image-actions
+  (transform [this & [options]] "Transforms a given image by the given options")
   (draw [this renderer x y] "Draw the image at the given x, y coordinates"))
 
 (defrecord Image
     [image width height angle]
   image-actions
+  (transform [this & [options]] (img/transform-image this options))
   (draw [this renderer x y] (.drawImage (:graphics renderer) image x y nil)))
 
-(defn image
-  [filepath & [options]]
-  (let [img (img/load-image filepath)
-        image (->Image img (.getWidth img) (.getHeight img) 0)]
+(defn- create-image
+  [img options]
+  (let [image (->Image img (.getWidth img) (.getHeight img) 0)]
     (if options
       (img/transform-image image options)
       image)))
 
+(defn image
+  [filepath & [options]]
+  (create-image (img/load-image filepath) options))
+
 (defprotocol spritesheet-actions
-  (get [this x y]))
+  (get [this x y & [options]]))
 
 (defrecord Spritesheet
     [image width height sprite-width sprite-height]
   spritesheet-actions
-  (get [this x y] (->Image (. image getSubimage
-                              (* x sprite-width)
-                              (* y sprite-height)
-                              sprite-width
-                              sprite-height)
-                           sprite-width
-                           sprite-height
-                           0)))
+  (get [this x y & [options]]
+    (create-image (. image getSubimage
+                     (* x sprite-width)
+                     (* y sprite-height)
+                     sprite-width
+                     sprite-height)
+                  options)))
 
 (defn spritesheet
   ([filepath sprite-width sprite-height]
