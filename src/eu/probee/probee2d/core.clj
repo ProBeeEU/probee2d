@@ -154,21 +154,23 @@
     (->GameLoop (create-game-loop window update-fn render-fn setup))))
 
 (defrecord GameStatistics
-    [interval-time interval-start-time last-time update-time render-time updates renders
-     ups fps avg-update-time avg-render-time]
+    [interval-time recordings]
   (record-start-time [this time] (if (= interval-start-time 0)
-                                   (assoc this :interval-start-time time :last-time time)
-                                   (assoc this :last-time time)))
-  (record-update-time [this time] (assoc this :update-time (+ update-time (- time last-record-time))
-                                         :updates (inc updates)
-                                         :last-time time))
-  (record-render-time [this time] (assoc this :render-time (+ render-time (- time last-record-time))
-                                         :renders (inc renders)
-                                         :last-time time))
-  (store-stats [this] (let [elapsed-time (- last-time interval-start-time)]
-                        (if (< elapsed-time interval-time)
-                          this
-                          (assoc this :fps (* (/ renders elapsed-time) 1000000000N)
+                                   (swap! recordings assoc :interval-start-time time :last-time time)
+                                   (swap! recordings assoc :last-time time)))
+  (record-update-time [this time] (let [{:keys [last-time update-time updates]} @recordings]
+                                    (swap! recordings assoc :update-time (+ update-time (- time last-time))
+                                           :updates (inc updates)
+                                           :last-time time)))
+  (record-render-time [this time] (let [{:keys [last-time render-time renders]} @recordings]
+                                    (swap! recordings assoc :render-time (+ render-time (- time last-time))
+                                           :renders (inc renders)
+                                           :last-time time)))
+  (store-stats [this] (let [{:keys [interval-start-time last-time render-time renders update-time updates]} @recordings
+                            elapsed-time (- last-time interval-start-time)]
+                        (if (>= elapsed-time interval-time)
+                          (swap! recordings assoc
+                                 :fps (* (/ renders elapsed-time) 1000000000N)
                                  :ups (* (/ updates elapsed-time) 1000000000N)
                                  :avg-render-time (/ (/ render-time 1000000N) renders)
                                  :avg-update-time (/ (/ update-time 1000000N) updates)
@@ -176,8 +178,23 @@
                                  :renders 0
                                  :update-time 0
                                  :render-time 0
-                                 :interval-start-time 0)))))
-                                        ]
+                                 :interval-start-time 0))))
+  (draw [this renderer x y & [c]] (let [graphics (:graphics renderer)
+                                        original-font (.getFont graphics)
+                                        original-color (.getColor graphics)
+                                        {:keys [fps ups]} @recordings]
+                                    (doto graphics
+                                      (.setColor (or c (color :white)))
+                                      (.setFont (Font. "MONOSPACED", Font/BOLD 12))
+                                      (.drawString (str "FPS: " fps) x y)
+                                      (.drawString (str "UPS: " ups) x (+ y 24))
+                                      (.setColor original-color)
+                                      (.setFont original-font)))))
 
 (def game-statistics []
-  (->GameStatistics 200000000N 0 0 0 0 0 0 0 0 0 0))
+  (->GameStatistics 200000000N (atom {:interval-start-time 0
+                                      :last-time 0
+                                      :update-time 0
+                                      :render-time 0
+                                      :updates 0
+                                      :renders 0}) 0 0 0 0))
