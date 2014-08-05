@@ -171,12 +171,12 @@
                            :renders 0})))
 
 (defmacro create-update-loop
-  [update-fn max-frame-skip tick-period & [stats]]
+  [update-fn entities max-frame-skip tick-period & [stats]]
   `(fn [next-tick#]
      (loop [tick# next-tick# updates# 0]
        (if (and (> (System/nanoTime) tick#)
                 (< updates# ~max-frame-skip))
-         (do (~update-fn)
+         (do (~update-fn ~entities)
              (when ~stats (record-update ~stats))
              (recur (+ tick# ~tick-period) (inc updates#)))
          tick#))))
@@ -191,15 +191,16 @@
         (inc no-sleep)))))
 
 (defmacro create-game-loop
-  [window update-fn render-fn settings & [stats]]
-  `(let [update-loop# (create-update-loop ~update-fn (:max-frame-skip ~settings)
+  [window entities update-fn render-fn settings & [stats]]
+  `(let [update-loop# (create-update-loop ~update-fn ~entities
+                                          (:max-frame-skip ~settings)
                                           (:tick-period ~settings) ~stats)
          sleep-or-yield# (create-sleep-or-yield (:max-no-sleep ~settings))]
      (fn [] (loop [tick# (System/nanoTime) no-sleep# 0]
               (when ~stats (record-start ~stats))
               (let [next-tick# (update-loop# tick#)
                     renderer# (get-renderer ~window)]
-                (~render-fn renderer#)
+                (~render-fn renderer# ~entities)
                 (dispose renderer#)
                 (render ~window)
                 (when ~stats (record-render ~stats))
@@ -218,24 +219,11 @@
 (defmacro wrap-fn [f]
   `(fn [& args#] (apply ~(resolve f) args#)))
 
-#_(defn game-loop
-  [window update-fn render-fn & [options stats]]
-  (let [final-options (merge game-loop-defaults options)
-        setup (merge final-options {:tick-period (calculate-tick-period (:ups final-options))})]
-    (->GameLoop (create-game-loop window (wrap-fn update-fn)
-                                  (wrap-fn render-fn) setup stats))))
-
-#_(defn game-loop
-  [window update-fn render-fn & [options stats]]
-  (let [final-options (merge game-loop-defaults options)
-        setup (merge final-options {:tick-period (calculate-tick-period (:ups final-options))})]
-    (->GameLoop (create-game-loop window update-fn render-fn setup stats))))
-
 (defmacro game-loop
-  [window update-fn render-fn & [options stats]]
+  [window entities update-fn render-fn & [options stats]]
   `(let [final-options# (merge game-loop-defaults ~options)
          setup# (merge final-options# {:tick-period (calculate-tick-period (:ups final-options#))})]
-     (future ((create-game-loop ~window ~update-fn ~render-fn setup# ~stats)))))
+     (future ((create-game-loop ~window ~entities ~update-fn ~render-fn setup# ~stats)))))
 
 (defn stop-game-loop
   [game-loop]
