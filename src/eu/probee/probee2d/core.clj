@@ -39,9 +39,8 @@
                    (assoc this :visible false)))
   (change-size [this w h] (do (.setSize window w h)
                               (assoc this :width w :height h)))
-  (get-renderer [this] (do (println "Return render")
-                           (->Renderer (.getDrawGraphics buffer-strategy)
-                                       width height)))
+  (get-renderer [this] (->Renderer (.getDrawGraphics buffer-strategy)
+                                   width height))
   (render [this] (.show buffer-strategy))
   common-actions
   (dispose [this] (do (.dispose window)
@@ -171,42 +170,20 @@
                            :updates 0
                            :renders 0})))
 
-(defprotocol game-loop-actions
-  (start [this])
-  (stop [this]))
-
-(defrecord GameLoop
-    [loop-fn]
-  game-loop-actions
-  (start [this] (do (println "Starting...")
-                    (when-not (:running this)
-                      (assoc this :running true :thread (future (loop-fn))))
-                    (println "Started!")))
-  (stop [this] (when (:running this)
-                 (assoc this :running (-> this :thread future-cancel not) :thread nil))))
-
 (defmacro create-update-loop
   [update-fn max-frame-skip tick-period & [stats]]
-  (println max-frame-skip " - " tick-period)
   `(fn [next-tick#]
-     (println "Calling update!")
-     (println next-tick#)
      (loop [tick# next-tick# updates# 0]
-       (println "Looping update")
-       (println tick# " - " updates# " - " ~max-frame-skip)
        (if (and (> (System/nanoTime) tick#)
                 (< updates# ~max-frame-skip))
-         (do (println "Update!")
-             (~update-fn)
+         (do (~update-fn)
              (when ~stats (record-update ~stats))
              (recur (+ tick# ~tick-period) (inc updates#)))
-         (do (println "Done!")
-             tick#)))))
+         tick#))))
 
 (defn- create-sleep-or-yield
   [max-no-sleep]
   (fn [sleep-time no-sleep]
-    (println "Called sleep or yield")
     (if (> sleep-time 0)
       (Thread/sleep (/ sleep-time 1000000N))
       (if (>= no-sleep max-no-sleep)
@@ -219,11 +196,9 @@
                                           (:tick-period ~settings) ~stats)
          sleep-or-yield# (create-sleep-or-yield (:max-no-sleep ~settings))]
      (fn [] (loop [tick# (System/nanoTime) no-sleep# 0]
-              (println "Running loop!")
               (when ~stats (record-start ~stats))
               (let [next-tick# (update-loop# tick#)
                     renderer# (get-renderer ~window)]
-                (println "Render!")
                 (~render-fn renderer#)
                 (dispose renderer#)
                 (render ~window)
@@ -260,5 +235,8 @@
   [window update-fn render-fn & [options stats]]
   `(let [final-options# (merge game-loop-defaults ~options)
          setup# (merge final-options# {:tick-period (calculate-tick-period (:ups final-options#))})]
-     (println setup#)
-     (hash-map :loop-fn (create-game-loop ~window ~update-fn ~render-fn setup# ~stats))))
+     (future ((create-game-loop ~window ~update-fn ~render-fn setup# ~stats)))))
+
+(defn stop-game-loop
+  [game-loop]
+  (future-cancel game-loop))
