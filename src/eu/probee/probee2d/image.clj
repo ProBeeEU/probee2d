@@ -1,11 +1,21 @@
 (ns eu.probee.probee2d.image
-  (:import (java.awt Toolkit)
+  (:import (java.awt GraphicsEnvironment Toolkit)
            (java.awt.geom AffineTransform Point2D$Double)
            (java.awt.image BufferedImage FilteredImageSource RGBImageFilter
                            AffineTransformOp)
            (java.io File IOException)
            (javax.imageio ImageIO))
   (:require [eu.probee.probee2d.util :refer [color]]))
+
+(defn- create-compatible-image [{:keys [image width height]}]
+  (let [graphics-configuration (.. (GraphicsEnvironment/getLocalGraphicsEnvironment)
+                                   getDefaultScreenDevice getDefaultConfiguration)
+        compatible-image (. graphics-configuration createCompatibleImage
+                            width height (. image getTransparency))]
+    (doto (. compatible-image createGraphics)
+      (. drawImage image 0 0 nil)
+      (. dispose))
+    compatible-image))
 
 (defn- image->buffered-image [image]
   (let [buffered-image (BufferedImage. (.getWidth image nil)
