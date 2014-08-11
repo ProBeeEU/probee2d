@@ -10,11 +10,12 @@
 (defn- create-compatible-image [{:keys [image width height]}]
   (let [graphics-configuration (.. (GraphicsEnvironment/getLocalGraphicsEnvironment)
                                    getDefaultScreenDevice getDefaultConfiguration)
-        compatible-image (. graphics-configuration createCompatibleImage
-                            width height (. image getTransparency))]
-    (doto (. compatible-image createGraphics)
-      (. drawImage image 0 0 nil)
-      (. dispose))
+        compatible-image (.createCompatibleImage graphics-configuration
+                                                 width height
+                                                 (. image getTransparency))]
+    (doto (.createGraphics compatible-image)
+      (.drawImage image 0 0 nil)
+      (.dispose))
     compatible-image))
 
 (defn- image->buffered-image [image]
