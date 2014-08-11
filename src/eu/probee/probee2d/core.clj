@@ -243,15 +243,15 @@
 
 (defmethod key-pressed java.lang.Character
   [key-states key]
-  (true? ((keyword (str key)) key-states)))
+  (key-pressed key-states (keyword (str key))))
 
 (defmethod key-pressed java.lang.String
   [key-states key]
-  (true? ((keyword key) key-states)))
+  (key-pressed key-states (keyword key)))
 
 (defmethod key-pressed java.lang.Number
   [key-states key]
-  (true? ((key-name key) key-states)))
+  (key-pressed key-states (key-name key)))
 
 (defmethod key-pressed clojure.lang.APersistentVector
   [key-states keys]
