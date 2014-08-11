@@ -1,7 +1,9 @@
 (ns eu.probee.probee2d.core
   (:import (javax.swing JFrame)
-           (java.awt Graphics Toolkit Font Rectangle))
-  (:require [eu.probee.probee2d.image :as img]
+           (java.awt Graphics Toolkit Font Rectangle)
+           (java.awt.event KeyAdapter KeyEvent))
+  (:require [clojure.string :as str]
+            [eu.probee.probee2d.image :as img]
             [eu.probee.probee2d.util :refer [color]]))
 
 (defprotocol common-actions
@@ -228,3 +230,16 @@
 (defn stop-game-loop
   [game-loop]
   (future-cancel game-loop))
+
+(defn- key-name [event]
+  (keyword (str/lower-case (KeyEvent/getKeyText (.getKeyCode event)))))
+
+(defn add-keyboard
+  [{:keys [window]}]
+  (let [pressed-keys (atom {})]
+    (.addKeyListener window (proxy [KeyAdapter] []
+                              (keyPressed [event]
+                                (swap! pressed-keys assoc (key-name event) true))
+                              (keyReleased [event]
+                                (swap! pressed-keys assoc (key-name event) false))))
+    pressed-keys))
