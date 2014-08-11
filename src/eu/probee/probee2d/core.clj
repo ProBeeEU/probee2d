@@ -52,7 +52,7 @@
   [title width height]
   (let [window (JFrame. title)]
     (doto window
-      (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
+      (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
       (.setSize width height)
       (.setResizable false)
       (.setLocationRelativeTo nil)
