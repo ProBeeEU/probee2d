@@ -210,8 +210,7 @@
                   (when ~stats (store-stats ~stats))
                   (recur next-tick# new-no-sleep#)))))))
 
-(def game-loop-defaults {:running false
-                         :ups 100
+(def game-loop-defaults {:ups 100
                          :max-no-sleep 8
                          :max-frame-skip 2})
 
