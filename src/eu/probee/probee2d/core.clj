@@ -139,8 +139,8 @@
                             elapsed-time (- last-time interval-start-time)]
                         (if (>= elapsed-time interval-time)
                           (swap! recordings assoc
-                                 :fps (int (* (/ renders elapsed-time) 1000000000N))
-                                 :ups (int (* (/ updates elapsed-time) 1000000000N))
+                                 :fps (double (* (/ renders elapsed-time) 1000000000N))
+                                 :ups (double (* (/ updates elapsed-time) 1000000000N))
                                  :avg-render-time (double (/ (/ render-time 1000000N) renders))
                                  :avg-update-time (double (/ (/ update-time 1000000N) updates))
                                  :updates 0
@@ -173,12 +173,12 @@
                            :renders 0})))
 
 (defmacro create-update-loop
-  [update-fn entities max-frame-skip tick-period & [stats]]
+  [update-fn max-frame-skip tick-period & [stats]]
   `(fn [next-tick#]
      (loop [tick# next-tick# updates# 0]
        (if (and (> (System/nanoTime) tick#)
                 (< updates# ~max-frame-skip))
-         (do (~update-fn ~entities)
+         (do (~update-fn)
              (when ~stats (record-update ~stats))
              (recur (+ tick# ~tick-period) (inc updates#)))
          tick#))))
@@ -193,8 +193,8 @@
         (inc no-sleep)))))
 
 (defmacro create-game-loop
-  [window entities update-fn render-fn settings & [stats]]
-  `(let [update-loop# (create-update-loop ~update-fn ~entities
+  [window update-fn render-fn settings & [stats]]
+  `(let [update-loop# (create-update-loop ~update-fn
                                           (:max-frame-skip ~settings)
                                           (:tick-period ~settings) ~stats)
          sleep-or-yield# (create-sleep-or-yield (:max-no-sleep ~settings))]
@@ -202,7 +202,7 @@
               (when ~stats (record-start ~stats))
               (let [next-tick# (update-loop# tick#)
                     renderer# (get-renderer ~window)]
-                (~render-fn renderer# ~entities)
+                (~render-fn renderer#)
                 (dispose renderer#)
                 (render ~window)
                 (when ~stats (record-render ~stats))
@@ -221,10 +221,10 @@
   `(fn [& args#] (apply ~(resolve f) args#)))
 
 (defmacro game-loop
-  [window entities update-fn render-fn & [options stats]]
+  [window update-fn render-fn & [options stats]]
   `(let [final-options# (merge game-loop-defaults ~options)
          setup# (merge final-options# {:tick-period (calculate-tick-period (:ups final-options#))})]
-     (future ((create-game-loop ~window ~entities ~update-fn ~render-fn setup# ~stats)))))
+     (future ((create-game-loop ~window ~update-fn ~render-fn setup# ~stats)))))
 
 (defn stop-game-loop
   [game-loop]
