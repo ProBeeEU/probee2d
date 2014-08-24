@@ -144,10 +144,10 @@
                             elapsed-time (- last-time interval-start-time)]
                         (if (>= elapsed-time interval-time)
                           (swap! recordings assoc
-                                 :fps (double (* (/ renders elapsed-time) 1000000000N))
-                                 :ups (double (* (/ updates elapsed-time) 1000000000N))
-                                 :avg-render-time (double (/ (/ render-time 1000000N) renders))
-                                 :avg-update-time (double (/ (/ update-time 1000000N) updates))
+                                 :fps (format "%.2f" (double (* (/ renders elapsed-time) 1000000000N)))
+                                 :ups (format "%.2f" (double (* (/ updates elapsed-time) 1000000000N)))
+                                 :avg-render-time (format "%.4f" (double (/ (/ render-time 1000000N) renders)))
+                                 :avg-update-time (format "%.4f" (double (/ (/ update-time 1000000N) updates)))
                                  :updates 0
                                  :renders 0
                                  :update-time 0
