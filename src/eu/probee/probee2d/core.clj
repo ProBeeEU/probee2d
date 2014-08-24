@@ -240,3 +240,9 @@
 (defn stop-game-loop
   [game-loop]
   (future-cancel game-loop))
+
+(defmacro game-frame
+  [title width height input-devices update-fn render-fn & [options use-stats]]
+  `(let [stats# (when ~use-stats (game-statistics (or (:statistics-interval ~options) 1)))
+         w# (assoc (window ~title ~width ~height ~input-devices) :stats stats#)]
+    (assoc w# :game-loop (game-loop w# ~update-fn ~render-fn ~options stats#))))
