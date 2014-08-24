@@ -4,7 +4,8 @@
            (java.awt.event KeyAdapter KeyEvent))
   (:require [clojure.string :as str]
             [eu.probee.probee2d.image :as img]
-            [eu.probee.probee2d.util :refer [color]]))
+            [eu.probee.probee2d.util :refer [color]]
+            [eu.probee.probee2d.input :as input]))
 
 (defprotocol common-actions
   (dispose [this]))
@@ -29,6 +30,7 @@
   (show [this])
   (hide [this])
   (change-size [this w h])
+  (get-input-device [this device-type])
   (get-renderer [this])
   (render [this]))
 
@@ -41,6 +43,7 @@
                    (assoc this :visible false)))
   (change-size [this w h] (do (.setSize window w h)
                               (assoc this :width w :height h)))
+  (get-input-device [this device-type] (get-in this [:inputs device-type]))
   (get-renderer [this] (->Renderer (.getDrawGraphics buffer-strategy)
                                    width height))
   (render [this] (.show buffer-strategy))
@@ -49,16 +52,18 @@
                       nil)))
 
 (defn window
-  [title width height]
-  (let [window (JFrame. title)]
-    (doto window
-      (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
-      (.setSize width height)
-      (.setResizable false)
-      (.setLocationRelativeTo nil)
-      (.setVisible true)
-      (.createBufferStrategy 2))
-    (->Window window width height (.getBufferStrategy window) true)))
+  ([title width height]
+     (let [w (JFrame. title)]
+       (doto w
+         (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
+         (.setSize width height)
+         (.setResizable false)
+         (.setLocationRelativeTo nil)
+         (.setVisible true)
+         (.createBufferStrategy 2))
+       (->Window w width height (.getBufferStrategy w) true)))
+  ([title width height input-devices]
+     (reduce #(assoc-in %1 [:inputs %2] (input/add-device %1 %2)) (window title width height) input-devices)))
 
 (defprotocol image-actions
   (transform [this options] "Transforms a given image by the given options")
@@ -229,51 +234,3 @@
 (defn stop-game-loop
   [game-loop]
   (future-cancel game-loop))
-
-(defn- key-name [key-code]
-  (keyword (str/lower-case (KeyEvent/getKeyText key-code))))
-
-(defmulti key-pressed
-  (fn [key-states key] (type key)))
-
-(defmethod key-pressed clojure.lang.Keyword
-  [key-states key]
-  (true? (key key-states)))
-
-(defmethod key-pressed java.lang.Character
-  [key-states key]
-  (key-pressed key-states (keyword (str key))))
-
-(defmethod key-pressed java.lang.String
-  [key-states key]
-  (key-pressed key-states (keyword key)))
-
-(defmethod key-pressed java.lang.Number
-  [key-states key]
-  (key-pressed key-states (key-name key)))
-
-(defmethod key-pressed clojure.lang.APersistentVector
-  [key-states keys]
-  (every? #(key-pressed key-states %) keys))
-
-(defprotocol PKeyboard
-  (pressed? [this key]))
-
-(defrecord Keyboard
-    [key-states]
-  PKeyboard
-  (pressed? [this key] (key-pressed @key-states key)))
-
-(defn add-keyboard
-  [{:keys [window]}]
-  (let [pressed-keys (atom {})]
-    (doto window
-      (.setFocusTraversalKeysEnabled false)
-      (.addKeyListener (proxy [KeyAdapter] []
-                         (keyPressed [event]
-                           (swap! pressed-keys assoc
-                                  (key-name (.getKeyCode event)) true))
-                         (keyReleased [event]
-                           (swap! pressed-keys assoc
-                                  (key-name (.getKeyCode event)) true)))))
-    (->Keyboard pressed-keys)))
