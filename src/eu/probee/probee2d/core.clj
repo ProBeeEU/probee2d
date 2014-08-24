@@ -183,7 +183,10 @@
      (loop [tick# next-tick# updates# 0]
        (if (and (> (System/nanoTime) tick#)
                 (< updates# ~max-frame-skip))
-         (do (~update-fn)
+         (do (try (~update-fn)
+                  (catch Exception e#
+                    (println (str "caught exception: " (.getMessage e#)))
+                    (throw e#)))
              (when ~stats (record-update ~stats))
              (recur (+ tick# ~tick-period) (inc updates#)))
          tick#))))
@@ -207,7 +210,10 @@
               (when ~stats (record-start ~stats))
               (let [next-tick# (update-loop# tick#)
                     renderer# (get-renderer ~window)]
-                (~render-fn renderer#)
+                (try (~render-fn renderer#)
+                  (catch Exception e#
+                    (println (str "caught exception: " (.getMessage e#)))
+                    (throw e#)))
                 (dispose renderer#)
                 (render ~window)
                 (when ~stats (record-render ~stats))
