@@ -43,9 +43,9 @@
   (hash-map :width (.getWidth image)
             :height (.getHeight image)))
 
-(defn load-image [filepath]
+(defn load-image [file-path]
   (try
-    (ImageIO/read (File. filepath))
+    (ImageIO/read (File. file-path))
     (catch IOException e
       (. e printstacktrace))))
 
