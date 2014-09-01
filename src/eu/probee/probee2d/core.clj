@@ -5,7 +5,7 @@
   (:require [clojure.string :as str]
             [eu.probee.probee2d.image :refer [image spritesheet draw] :as img]
             [eu.probee.probee2d.util :refer [color]]
-            [eu.probee.probee2d.input :as input]))
+            [eu.probee.probee2d.input :refer [pressed?] :as input]))
 
 (defprotocol common-actions
   (dispose [this]))
