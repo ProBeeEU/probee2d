@@ -103,3 +103,53 @@
                           #(rotate % rotate-angle))
                         (when scale-factor
                           #(scale % scale-factor))))))
+
+(defprotocol IImage
+  (transform [this options] "Transforms a given image by the given options")
+  (draw [this renderer x y] "Draw the image at the given x, y coordinates"))
+
+(defrecord Image
+    [image width height angle]
+  IImage
+  (transform [this options] (transform-image this options))
+  (draw [this renderer x y] (.drawImage (:graphics renderer) image x y nil)))
+
+(defn- create-image
+  [img & [options]]
+  (let [image (->Image img (.getWidth img) (.getHeight img) 0)]
+    (if options
+      (transform-image image options)
+      image)))
+
+(defn image
+  [file-path & [options]]
+  (create-image (load-image file-path) options))
+
+(defprotocol ISpritesheet
+  (get
+    [this column row]
+    [this column row options]
+    "Extracts a image from the spritesheet at the given column and row"))
+
+(defrecord Spritesheet
+    [image width height sprite-width sprite-height]
+  ISpritesheet
+  (get [this column row] (get this column row nil))
+  (get [this column row options]
+    (create-image (. image getSubimage
+                     (* column sprite-width)
+                     (* row sprite-height)
+                     sprite-width
+                     sprite-height)
+                  options)))
+
+(defn spritesheet
+  ([file-path sprite-size]
+     (spritesheet file-path sprite-size sprite-size))
+  ([file-path sprite-width sprite-height]
+     (let [image (load-image file-path)]
+       (->Spritesheet image
+                      (.getWidth image)
+                      (.getHeight image)
+                      sprite-width
+                      sprite-height))))

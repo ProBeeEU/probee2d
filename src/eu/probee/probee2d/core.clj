@@ -3,7 +3,7 @@
            (java.awt Graphics Toolkit Font Rectangle)
            (java.awt.event KeyAdapter KeyEvent))
   (:require [clojure.string :as str]
-            [eu.probee.probee2d.image :as img]
+            [eu.probee.probee2d.image :refer [image spritesheet draw] :as img]
             [eu.probee.probee2d.util :refer [color]]
             [eu.probee.probee2d.input :as input]))
 
@@ -64,54 +64,6 @@
        (->Window w width height (.getBufferStrategy w) true)))
   ([title width height input-devices]
      (reduce #(assoc-in %1 [:inputs %2] (input/add-device %1 %2)) (window title width height) input-devices)))
-
-(defprotocol image-actions
-  (transform [this options] "Transforms a given image by the given options")
-  (draw [this renderer x y] "Draw the image at the given x, y coordinates"))
-
-(defrecord Image
-    [image width height angle]
-  image-actions
-  (transform [this options] (img/transform-image this options))
-  (draw [this renderer x y] (.drawImage (:graphics renderer) image x y nil)))
-
-(defn- create-image
-  [img & [options]]
-  (let [image (->Image img (.getWidth img) (.getHeight img) 0)]
-    (if options
-      (img/transform-image image options)
-      image)))
-
-(defn image
-  [filepath & [options]]
-  (create-image (img/load-image filepath) options))
-
-(defprotocol spritesheet-actions
-  (get
-    [this x y]
-    [this x y options]
-    "Extracts a image from the given x, y index"))
-
-(defrecord Spritesheet
-    [image width height sprite-width sprite-height]
-  spritesheet-actions
-  (get [this x y] (get this x y nil))
-  (get [this x y options]
-    (create-image (. image getSubimage
-                     (* x sprite-width)
-                     (* y sprite-height)
-                     sprite-width
-                     sprite-height)
-                  options)))
-
-(defn spritesheet
-  [filepath sprite-width sprite-height]
-  (let [image (img/load-image filepath)]
-    (->Spritesheet image
-                   (.getWidth image)
-                   (.getHeight image)
-                   sprite-width
-                   sprite-height)))
 
 (defprotocol game-statistics-actions
   (record-start [this])
