@@ -3,7 +3,6 @@
            (java.awt Graphics Toolkit Font Rectangle)
            (java.awt.event KeyAdapter KeyEvent))
   (:require [clojure.string :as str]
-            [eu.probee.probee2d.image :refer [image spritesheet draw] :as img]
             [eu.probee.probee2d.util :refer [color]]
             [eu.probee.probee2d.input :refer [pressed?] :as input]))
 
@@ -198,15 +197,3 @@
   `(let [stats# (when ~use-stats (game-statistics (or (:statistics-interval ~options) 1)))
          w# (assoc (window ~title ~width ~height ~input-devices) :stats stats#)]
     (assoc w# :game-loop (game-loop w# ~update-fn ~render-fn ~options stats#))))
-
-(defstruct Sprite :x :y :img :vel-x :vel-y)
-
-(defn sprite [x y img & [vel-x vel-y]]
-  (struct Sprite x y img (or vel-x 0) (or vel-y 0)))
-
-(defn move-sprite [{:keys [x y vel-x vel-y] :as sprite}]
-  (assoc sprite :x (+ x vel-x) :y (+ y vel-y)))
-
-(defn draw-sprite [{:keys [x y img] :as sprite} renderer]
-  (let [{:keys [width height]} img]
-    (draw img renderer (- x (/ width 2)) (- y (/ height 2)))))
